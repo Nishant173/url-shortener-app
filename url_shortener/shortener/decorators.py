@@ -9,7 +9,7 @@ def api_exception_handler():
         def wrapper(request, *args, **kwargs):
             try:
                 return func(request, *args, **kwargs)
-            except exceptions.ValidationError as e:
+            except (exceptions.AuthenticationFailed, exceptions.ValidationError) as e:
                 response_data = {
                     "detail": e.detail,
                     "code": e.default_code,
