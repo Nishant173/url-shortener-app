@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from rest_framework import status, viewsets
 # from rest_framework.permissions import IsAuthenticated
@@ -8,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from shortener.authenticators import authenticate_request
+from shortener import decorators
 from shortener.models import ShortUrl, ShortUrlAccessLog, Token
 from shortener.serializers import (
     ShortUrlAccessLogReadOnlySerializer,
@@ -26,6 +28,8 @@ class HomeView(viewsets.ViewSet):
 
 class UserView(viewsets.ViewSet):
 
+    @decorators.api_exception_handler()
+    @transaction.atomic
     def create_one(self, request: Request):
         ser = UserCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -45,7 +49,7 @@ class UserView(viewsets.ViewSet):
 
 class ShortUrlView(viewsets.ViewSet):
 
-    def log_access_of_short_url(self, *, short_url: ShortUrl, request: Request):
+    def _log_access_of_short_url(self, *, short_url: ShortUrl, request: Request):
         """Logs the IP address, user agent of the given request"""
         return ShortUrlAccessLog.objects.create(
             short_url=short_url,
@@ -54,12 +58,16 @@ class ShortUrlView(viewsets.ViewSet):
             timestamp=datetime.utcnow(),
         )
 
+    @decorators.api_exception_handler()
+    @transaction.atomic
     def get_all(self, request: Request):
         request = authenticate_request(request=request)
         queryset = ShortUrl.objects.filter(user_id=request.user.id).order_by("-created_at")
         response_data = ShortUrlReadOnlySerializer(instance=queryset, many=True).data
         return Response(data=response_data, status=status.HTTP_200_OK)
 
+    @decorators.api_exception_handler()
+    @transaction.atomic
     def get_one(self, request: Request, short_url: str):
         try:
             instance = ShortUrl.objects.get(
@@ -73,10 +81,12 @@ class ShortUrlView(viewsets.ViewSet):
             return Response(data={"message": f"The given short URL '{short_url}' has reached max usage limit"}, status=status.HTTP_404_NOT_FOUND)
         instance.usage_count += 1
         instance.save()
-        self.log_access_of_short_url(short_url=instance, request=request)
+        self._log_access_of_short_url(short_url=instance, request=request)
         response_data = ShortUrlReadOnlySerializer(instance=instance).data
         return Response(data=response_data, status=status.HTTP_200_OK)
 
+    @decorators.api_exception_handler()
+    @transaction.atomic
     def get_one_redirect(self, request: Request, short_url: str):
         try:
             instance = ShortUrl.objects.get(
@@ -90,9 +100,11 @@ class ShortUrlView(viewsets.ViewSet):
             return Response(data={"message": f"The given short URL '{short_url}' has reached max usage limit"}, status=status.HTTP_404_NOT_FOUND)
         instance.usage_count += 1
         instance.save()
-        self.log_access_of_short_url(short_url=instance, request=request)
+        self._log_access_of_short_url(short_url=instance, request=request)
         return HttpResponseRedirect(redirect_to=instance.long_url)
 
+    @decorators.api_exception_handler()
+    @transaction.atomic
     def create_one(self, request: Request):
         request = authenticate_request(request=request)
         serializer = ShortUrlCreateSerializer(data=request.data)
@@ -111,6 +123,8 @@ class ShortUrlView(viewsets.ViewSet):
 
 class ShortUrlAccessLogView(viewsets.ViewSet):
 
+    @decorators.api_exception_handler()
+    @transaction.atomic
     def get_all(self, request: Request):
         queryset = ShortUrlAccessLog.objects.filter().order_by("-created_at")
         short_url_data_list = list(
