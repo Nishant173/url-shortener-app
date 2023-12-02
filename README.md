@@ -16,7 +16,7 @@ curl --location 'http://127.0.0.1:8000/users/' \
 curl --location 'http://127.0.0.1:8000/short-urls/' \
 --header 'Authorization: Bearer UD9NAR4BIY20W50MUCR3'
 ```
-- Create one short URL (POST):
+- Create one short URL as a user (POST):
 ```
 curl --location 'http://127.0.0.1:8000/short-urls/' \
 --header 'Content-Type: application/json' \
@@ -32,8 +32,7 @@ curl --location 'http://127.0.0.1:8000/short-urls/' \
 ```curl --location 'http://127.0.0.1:8000/short-urls/yitcwhgh.abc'```
 - Get one short URL redirect (GET):
 ```
-curl --location 'http://127.0.0.1:8000/short-urls/yitcwhgh.abc/redirect' \
---header 'Authorization: Bearer BPJ8N5AE2W6OMT7E4V1E'
+curl --location 'http://127.0.0.1:8000/short-urls/yitcwhgh.abc/redirect'
 ```
 - List short URL access log (GET):
 ```
